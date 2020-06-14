@@ -1,1 +1,1 @@
-web: streamlit run pen.py
+web: sh setup.sh && streamlit run pen.py
