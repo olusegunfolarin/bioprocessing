@@ -63,16 +63,9 @@ def get_offline_data(df):
 
 
 @st.cache
-def split_data(df):
+def split_data(df, features = []):
     #X = pen_data_clean.drop(columns=['penicillin_concentration', 'batch_id', 'fault_flag'])
-    features = [
-                'time_',
-                'vessel_volume',
-                'carbon_evolution_rate',
-                'oil_flow',
-                'dissolved_oxygen_concentration',
-                'substrate_concentration',
-               ]
+   
     X = df[features]
     y = df.offline_penicillin_concentration
     
@@ -115,17 +108,19 @@ if page == "Homepage":
     st.subheader("Background")
     
     st.markdown("""
-                One of the challenges of bioprocessing is product monitoring.
-                Bioprocess development and discovery requires optimization of processes 
-                for increased product yield. However, due to the analytics 
-                available for product measurement, bioprocesss development is 
-                slowed. For example, during mAb production using mammalian cell 
-                fermentation, monitoring the product yield requires taking samples 
-                of broth at interval, spinning down the cells and running analytical 
-                processes such as SDS-PAGE and ELISA. For accurate product 
-                quantification, HPLC is sometimes combined with the methods 
-                mentioned. This can take as much as 24 hours to carry out. This means that development process is halted until the result of product quantification is achieved.
-    
+    One of the challenges of bioprocessing is product monitoring.
+    Bioprocess development and discovery requires optimization of processes 
+    for increased product yield. However, due to the analytics 
+    available for product measurement, bioprocesss development is 
+    slowed. For example, during mAb production using mammalian cell 
+    fermentation, monitoring the product yield requires taking samples 
+    of broth at interval, spinning down the cells and running analytical 
+    processes such as SDS-PAGE and ELISA. For accurate product 
+    quantification, HPLC is sometimes combined with the methods 
+    mentioned. This can take as much as 24 hours to carry out.
+    This means that development process is halted until the result
+    of product quantification is achieved.
+
     Rapid product quantification is necessary to fast-track product development by 
     removing the product quantification bottleneck associated with current methods. 
     AI/ML products are revolutionizing all industries and the bioprocess industries 
@@ -186,8 +181,15 @@ elif page == "Penicillin Monitoring":
     
     if st.checkbox("Show training data"):
         st.dataframe(data)
-    
-    X_train, X_test, y_train, y_test = split_data(data)
+    pen_features = [
+                'time_',
+                'vessel_volume',
+                'carbon_evolution_rate',
+                'oil_flow',
+                'dissolved_oxygen_concentration',
+                'substrate_concentration',
+               ]
+    X_train, X_test, y_train, y_test = split_data(data, pen_features)
     model = train_model(X_train, y_train)
     rmse = test_performance(model, X_test, y_test)
     
@@ -215,7 +217,48 @@ elif page == "Penicillin Monitoring":
         st.markdown(f"## **{np.round(prediction, 2)[0]}** g/L")
 
 elif page == "Online Biomass Monitoring":
-    st.subheader("Coming soon!")
+    st.subheader("Biomass Quantification")
+    data = load_data()
+    
+    new_cols, col_dict = rename_columns(data.columns)
+    data.columns = new_cols
+    if st.checkbox("Show all data"):
+        st.dataframe(data)
+    data = get_offline_data(data)
+    
+    if st.checkbox("Show training data"):
+        st.dataframe(data)
+    biomass_features = [
+                        'time_', 'carbon_dioxide_percent_in_off-gas',
+                        'carbon_evolution_rate',
+                        'aeration_rate', 'air_head_pressure', 'vessel_volume'
+                        ]
+    X_train, X_test, y_train, y_test = split_data(data, features=biomass_features)
+    model = train_model(X_train, y_train)
+    rmse = test_performance(model, X_test, y_test)
+    
+    st.header("""
+              Fermentation parameters:
+              """)
+    
+    rand = np.random.randint(X_test.shape[0]- 1, size=1)[0]
+    time = st.number_input("Time (h)", 0., 1000., float(X_test.iloc[rand, 0]))
+    vessel = st.number_input("Vessel Volume", 0., 100000., float(X_test.iloc[rand, 5]))
+    cer = st.number_input("Carbon Evolution Rate (g/h)", 0., 1000., float(X_test.iloc[rand, 2]))
+    cof = st.number_input("CO2 in off gas(mg/L)", 0., 1000., float(X_test.iloc[rand, 1]))
+    ae = st.number_input("Aeration Rate", 0., 1000., float(X_test.iloc[rand, 3])) 
+    ap = st.number_input("Air head Pressure", 0., 1000., float(X_test.iloc[rand, 4])) 
+    
+    status = st.empty()
+    button = st.button('Check Biomass Concentration')
+    #status.text("Please click button abbove to check penicillin Concentration")
+    
+    if button:
+        status.text("Generating biomass Concentration")
+        input_values = np.array((time, cof, cer, ae, ap, vessel)).reshape(1, -1)
+        prediction = model.predict(input_values)
+        status.text("Biomass  concentration generated")
+        st.markdown(f"## **{np.round(prediction, 2)[0]}** g/L")
 elif page == "Rapid mAb monitoring":
     st.subheader("Coming soon!")
 elif page == "Plasmid quantification monitoring":
