@@ -2,4 +2,4 @@ pandas
 numpy
 matplotlib
 scikit-learn
-streamlit==0.61.0
+streamlit==1.37.0
